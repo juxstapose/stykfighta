@@ -195,34 +195,6 @@ void sprite_load_meta_file(char* filename, DArray *meta_info) {
    } 
 }
 
-/**
-int main(int argc, char** argv){
-    char* filename = "animation_meta_info.txt";
-    DArray meta_info;
-    darray_init(&meta_info);
-    sprite_load_meta_file(filename, &meta_info);
-    printf("meta info\n");
-    darray_print(&meta_info);
-     
-    int animation = 0;
-    int frame = 0;
-    animation = 2;
-    frame = 7;
-    int width = 0;
-    int height = 0;
-    int x_offset = 0;
-    int y_offset = 0;
-    sprite_get_offset_wh_by_frame(animation, frame, &meta_info, &x_offset, &y_offset, &width, &height);
-    printf("animation: %i\n", animation); 
-    printf("frame: %i\n", frame); 
-    printf("width: %i\n", width); 
-    printf("height: %i\n", height); 
-    printf("x offset: %i\n", x_offset); 
-    printf("y offset: %i\n", y_offset); 
-    darray_destroy(&meta_info);
-
-}
-**/
 
 int player_input(Sprite* player) {
     SDL_Event event;
