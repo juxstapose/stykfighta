@@ -16,7 +16,6 @@ int darray_init(DArray *DAP) {
     }
 }
 
-//print all elements in the DArray
 void darray_print(DArray *DAP)
 {
     printf("Max = %d; Cur = %d\n", DAP->max_size, DAP->cur_size);
@@ -27,7 +26,6 @@ void darray_print(DArray *DAP)
     printf("\n");
 }
 
-//add the new val into the DArray
 void darray_add(DArray *DAP, int val)
 {
     if (!darray_full(DAP)) {
@@ -42,8 +40,7 @@ void darray_add(DArray *DAP, int val)
     }
 }
 
-//returns 1 if the DAarray is full
-static int darray_full(DArray *DAP)
+int darray_full(DArray *DAP)
 {
     assert(DAP->cur_size >= 0 && DAP->max_size >= 0);
     assert(DAP->cur_size <= DAP->max_size);
@@ -56,7 +53,7 @@ static int darray_full(DArray *DAP)
 }
 
 //grows the DArray to double its original size
-static int darray_grow(DArray *DAP) {
+int darray_grow(DArray *DAP) {
     int *temp=(int *)realloc(DAP->items, sizeof(*temp) * DAP->max_size * 2);
     if (!temp) {
         printf("Realloc failed!\n");

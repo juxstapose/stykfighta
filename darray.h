@@ -7,11 +7,11 @@ typedef struct dynamic_array
     int *items;
 } DArray;
 
-extern int darray_init(DArray *DAP);
-extern void darray_destroy(DArray *DAP);
-extern void darray_print(DArray *DAP);
-extern void darray_add(DArray *DAP, int val);
-extern int darray_length(DArray *DAP); 
-static int darray_full(DArray *DAP);
-static int darray_grow(DArray *DAP);
+int darray_init(DArray *DAP);
+void darray_destroy(DArray *DAP);
+void darray_print(DArray *DAP);
+void darray_add(DArray *DAP, int val);
+int darray_length(DArray *DAP); 
+int darray_full(DArray *DAP);
+int darray_grow(DArray *DAP);
 
