@@ -154,9 +154,6 @@ int main(int argc, char** argv){
     pf_list_remove(&open_list, ele);
     pf_list_print(&open_list);
     
-    pf_list_remove(&open_list, ele2);
-    pf_list_print(&open_list);
-    
     pf_list_remove(&open_list, ele4);
     pf_list_print(&open_list);
     
