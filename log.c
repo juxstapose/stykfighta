@@ -10,6 +10,7 @@
 #include "log.h"
 
 int _debug_level;
+FILE *_lfp;
 
 void log_init() {
     _debug_level = LOG_DEBUG;
@@ -17,6 +18,17 @@ void log_init() {
 
 void log_set_debug_level(int debug_level) {
     _debug_level = debug_level;
+}
+
+void log_file_open(const char* filename) {
+    _lfp = fopen(filename, "w");
+    if(_lfp == NULL) {
+        fclose(_lfp);
+    }
+}
+
+void log_file_close() { 
+    fclose(_lfp);
 }
 
 int log_msg(int debug_level, const char* format, ...) {
@@ -29,7 +41,7 @@ int log_msg(int debug_level, const char* format, ...) {
     int count = 0;
     va_list arglist;
     va_start(arglist, format);
-     
+
     if(debug_level == LOG_DEBUG) {
         strcpy(dest, "DEBUG: ");
         count = vsnprintf(&dest[7], 1024*16-7, format, arglist);
@@ -47,12 +59,17 @@ int log_msg(int debug_level, const char* format, ...) {
     }
     
     printf("%s", dest);
-    
+    if(_lfp != NULL) {
+        fwrite(dest, 1, strlen(dest), _lfp);
+    }
+
     va_end(arglist);
     return count;
 }
+/**
 int main(int argc, char** argv){
     log_init();
     int count = 10;
     int bytes = log_msg(LOG_DEBUG, "hello this is a debug test with the number %i", count);
 }
+**/
