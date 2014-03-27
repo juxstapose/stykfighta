@@ -35,6 +35,7 @@ typedef struct sprite_sprite {
     int direction;
 } Sprite;
 
+void sprite_draw_background(SDL_Renderer *renderer, SDL_Texture *backgrounds, int len, int *current_background, int player_x, int player_moving); 
 int within_coordinates(Sprite *sprite, int dest_x, int dest_y);
 void moveto_coordinates(Sprite *sprite, int dest_x, int dest_y);
 void world_to_pixel(int x, int y, int *dest_x, int *dest_y);

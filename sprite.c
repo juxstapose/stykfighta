@@ -771,6 +771,88 @@ void boundry_check(Sprite *sprite, DArray *meta_info, int *x, int *y) {
     }
 }
 
+void sprite_draw_background(SDL_Renderer *renderer, SDL_Texture *backgrounds, int len, int *current_background, int player_x, int player_moving) { 
+    
+    /**
+    int i = 0;
+    for(i=0; i <len; i++) {
+        
+        printf("[%p]\n", backgrounds[i]);
+
+
+    }
+
+    if(*background != NULL) {
+        
+        int increment = 0;
+        int bg_slice = 0;
+        if(player_x > 760 && player_moving) {
+            increment++;
+            bg_slice = increment * -1;
+            
+        }
+
+        SDL_Rect dst;
+        dst.x = 0;
+        dst.y = 0;
+        //Query the texture to get its width and height to use
+        SDL_QueryTexture(background, NULL, NULL, &dst.w, &dst.h);
+        SDL_RenderCopy(renderer, background, NULL, &dst);
+    
+        SDL_Rect dsts;
+        dsts.x = -700;
+        dsts.y = 0;
+        //Query the texture to get its width and height to use
+        SDL_QueryTexture(background, NULL, NULL, &dsts.w, &dsts.h);
+        SDL_RenderCopy(renderer, background, NULL, &dsts);
+    }
+    **/
+    //number of backgrounds of any size even duplicates
+    //current background keep track of
+    //check to see if where at first or last
+    //whether or not to keep scrolling if at end
+    //current position is 400 but what is background at so current pos shows camera need a camera
+    //camera is sdl rect it pans with current background
+    //so camera shows current x at background
+    //camera shows x position of all backgrounds strung together
+    //but when do we scroll
+    //when current position is within 150 pixels of end of screen only when moving in that direction
+    //then we draw one pixel line more of background
+
+    //decreases by 1 based on current positiion
+    //SDL_Rect dst;
+    //dst.x = -800;
+    //dst.y = 0;
+    //Query the texture to get its width and height to use
+    //SDL_QueryTexture(background, NULL, NULL, &dst.w, &dst.h);
+    //SDL_RenderCopy(renderer, background, NULL, &dst);
+   
+    //decreases by 1 based on current positiion
+    //SDL_Rect dsts;
+    //dsts.x = -700;
+    //dsts.y = 0;
+    //Query the texture to get its width and height to use
+    //SDL_QueryTexture(background, NULL, NULL, &dsts.w, &dsts.h);
+    //SDL_RenderCopy(renderer, background, NULL, &dsts);
+    
+    //what happens at boundry conditions 
+    //when x = - 800
+    //other x = 0
+    
+    
+    //int current_pos = 0;
+        //trigger shift at 10 pixel before max width
+        //current_pos
+        //how much further the next chunk of width is
+        //if current pos is within range of first background then dont draw second background
+        //draw background with x = current pos - width
+        //original chunk of background with previous cutoff
+        //draw background x = width - (current_pos - width)
+        //when second background becomes first background repeat
+
+}
+
+
 int main(int argc, char** argv){
     printf("hello world\n");
     
@@ -800,11 +882,22 @@ int main(int argc, char** argv){
 		printf("%s\n", SDL_GetError());
 		return 3;
 	}
-
+    
+    SDL_Texture *background = NULL;
     SDL_Texture *image = NULL;
 
-    //background = sprite_load_image(renderer, "res/white_background.png");
-	image = sprite_load_image(renderer, "res/output.png");
+    background = sprite_load_image(renderer, "res/background_rcr.png");
+    //background1 = sprite_load_image(renderer, "res/background_rcr.png");
+    //background2 = sprite_load_image(renderer, "res/background_new.png");
+
+    //SDL_Texture *backgrounds[2];
+    //backgrounds[0] = background1;
+    //backgrounds[1] = background2;
+    
+    //printf("bg 1: [%p]\n", backgrounds[0]);
+    //printf("bg 2: [%p]\n", backgrounds[1]);
+	
+    image = sprite_load_image(renderer, "res/output.png");
     printf("after sprite load image\n");
         
     //load the meta info
@@ -896,7 +989,9 @@ int main(int argc, char** argv){
         if(collision) {
             sprite_handle_collision(player, enemy, &meta_info);
         }
-
+        
+        
+        
         //handle collision
         //if animation is an attack then check frame range that triggers a hit
         //check if attack animation triggers a hi or low hit
@@ -912,6 +1007,8 @@ int main(int argc, char** argv){
         
         //Rendering
 		SDL_RenderClear(renderer);
+        
+        //sprite_draw_background(renderer, backgrounds, 2, 0, 775, 1);
         
         //draw sprite
         sprite_render_frame(player, &meta_info, renderer, 1);
@@ -934,7 +1031,7 @@ int main(int argc, char** argv){
     sprite_destroy(player);
     sprite_destroy(enemy);
     darray_destroy(&meta_info);
-	//SDL_DestroyTexture(background);
+	SDL_DestroyTexture(background);
 	SDL_DestroyTexture(image);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
