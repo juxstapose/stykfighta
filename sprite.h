@@ -4,6 +4,7 @@
 typedef struct sprite_sprite {
     int type;
     int animation;
+    int last_animation;
     int x;
     int y;
     SDL_Texture *texture;
@@ -20,8 +21,10 @@ typedef struct sprite_sprite {
     int down_key;
     int wander_direction;
     int state;
+    int attack_duration_start;
     int wander_start;
     int stall_start;
+    int attack_duration;
     int wander_duration;
     int stall_duration;
     SDL_Rect bounding_box;
@@ -33,13 +36,20 @@ typedef struct sprite_sprite {
     int animation_count[MAX_ANIMATIONS];
     int last_animation_count[MAX_ANIMATIONS];
     int direction;
+    int moving_right;
+    int moving_left;
+    int scroll;
+    int health;
+    int max_health;
 } Sprite;
 
-void sprite_draw_background(SDL_Renderer *renderer, SDL_Texture *backgrounds, int len, int *current_background, int player_x, int player_moving); 
+void sprite_draw_background(SDL_Renderer *renderer, SDL_Texture **backgrounds, int len, int *current_background, int player_x, int player_moving_right, int player_moving_left, int *player_scroll); 
 int within_coordinates(Sprite *sprite, int dest_x, int dest_y);
 void moveto_coordinates(Sprite *sprite, int dest_x, int dest_y);
-void world_to_pixel(int x, int y, int *dest_x, int *dest_y);
-void pixel_to_world(int x, int y, int *dest_x, int *dest_y);
+//void world_to_pixel(int x, int y, int *dest_x, int *dest_y);
+//void pixel_to_world(int x, int y, int *dest_x, int *dest_y);
+void pixel_to_world(float bg_width, float bg_height, float world_width, float world_height, int x, int y, int *dest_x, int *dest_y); 
+void world_to_pixel(float bg_width, float bg_height, float world_width, float world_height, int x, int y, int *dest_x, int *dest_y);
 int is_within(int cmp1, int cmp2, int fudge);
 SDL_Texture* sprite_load_image(SDL_Renderer *renderer, char* filename);
 int sprite_get_frames(int animation, DArray *meta_info);
@@ -47,6 +57,6 @@ Sprite* sprite_create(int type, int animation, int x, int y, float delay, SDL_Te
 void sprite_handle_collision(Sprite *sprite1, Sprite *sprite2, DArray *meta_info);
 void sprite_destroy(Sprite *sprite);
 void sprite_update(Sprite* sprite, DArray *meta_info, SDL_Renderer *rend);
-void sprite_render_frame(Sprite *sprite, DArray *meta_info, SDL_Renderer *rend, int draw_bounding_box);
+void sprite_render_frame(float bg_width, float bg_height, Sprite *sprite, DArray *meta_info, SDL_Renderer *rend, int draw_bounding_box);
 void sprite_load_meta_file(char* filename, DArray *meta_info);
 void sprite_get_offset_wh_by_frame(int animation, int frame, DArray* meta_info, int *x_offset, int *y_offset, int* width, int* height);

@@ -228,12 +228,14 @@ Node* pf_list_pop(PF_List *lst, int index) {
     int i = 0;
     Node *curr = lst->tail->next;
     while(curr!= NULL && curr != lst->head) {
+        //printf("pf_list_pop:%i == %i\n", i, index);
         if(index == i) {
             Node* p = curr->previous;
             Node* n = curr->next;
             p->next = n;
             n->previous = p;
             lst->size--;
+          //  printf("return curr\n");
             return curr;
         }
         i++;

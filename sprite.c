@@ -96,6 +96,7 @@ Sprite* sprite_create(int type, int animation, int x, int y, float delay, SDL_Te
     }
     sprite->type = type;
     sprite->animation = animation;
+    sprite->last_animation = animation;
     sprite->x = x;
     sprite->y = y;
     sprite->texture = texture;
@@ -115,8 +116,10 @@ Sprite* sprite_create(int type, int animation, int x, int y, float delay, SDL_Te
     sprite->bounding_box.w = 0;
     sprite->bounding_box.h = 0;
     sprite->state = WANDER;
+    sprite->attack_duration_start = SDL_GetTicks();
     sprite->wander_start = SDL_GetTicks();
     sprite->stall_start = SDL_GetTicks();
+    sprite->attack_duration = 6000;
     sprite->wander_duration = 4000;
     sprite->stall_duration = 2000;
     sprite->location = node_create(0,0);
@@ -124,7 +127,12 @@ Sprite* sprite_create(int type, int animation, int x, int y, float delay, SDL_Te
     sprite->seek_length = 0;
     sprite->flee_loc_x = 0;
     sprite->flee_loc_y = 0;
-    
+    sprite->moving_right = 0;
+    sprite->moving_left = 0;
+    sprite->scroll = 0;
+    sprite->health = 100;
+    sprite->max_health = 100;
+
     int i = 0;
     for(i=0; i<MAX_ANIMATIONS; i++) {
         sprite->current_frame[i] = 0;
@@ -167,7 +175,7 @@ void sprite_update(Sprite* sprite, DArray *meta_info, SDL_Renderer *rend) {
     if(sprite->animation == HIT) {
         display = "hit";
     }
-    printf("%s current_frame: %i frames: %i advance_frame:%i \n", display, sprite->current_frame[sprite->animation], frames, sprite->advance_frame);
+    //printf("%s current_frame: %i frames: %i advance_frame:%i \n", display, sprite->current_frame[sprite->animation], frames, sprite->advance_frame);
     if(now - sprite->last_update > sprite->delay && sprite->advance_frame) {
         sprite->current_frame[sprite->animation] = sprite->current_frame[sprite->animation] + 1;
         if(sprite->animation != WALK && sprite->animation != RUN) {
@@ -198,7 +206,7 @@ void sprite_update_bounding_box(Sprite *sprite, DArray *meta_info) {
 
 }
 
-void sprite_render_frame(Sprite *sprite, DArray *meta_info, SDL_Renderer *rend, int draw_bounding_box) {
+void sprite_render_frame(float bg_width, float bg_height, Sprite *sprite, DArray *meta_info, SDL_Renderer *rend, int draw_bounding_box) {
     
     //find position location of frame in spritesheet using parsed meta info
     int x_offset = 0;
@@ -206,7 +214,7 @@ void sprite_render_frame(Sprite *sprite, DArray *meta_info, SDL_Renderer *rend, 
     int width = 0;
     int height = 0;
     
-    printf("render: sprite->animation:%i current frame:%i\n", sprite->animation, sprite->current_frame[sprite->animation]);
+    //printf("render: sprite->animation:%i current frame:%i\n", sprite->animation, sprite->current_frame[sprite->animation]);
     sprite_get_offset_wh_by_frame(sprite->animation, sprite->current_frame[sprite->animation], meta_info, &x_offset, &y_offset, &width, &height);
     
     //printf("loading animation %i at frame %i using x:%i y:%i width:%i height:%i\n", animation, current_frame, x_offset, y_offset, width, height);	
@@ -218,15 +226,22 @@ void sprite_render_frame(Sprite *sprite, DArray *meta_info, SDL_Renderer *rend, 
     if(sprite->x < 0) {
         sprite->x = 0;
     }
-    if(sprite->x > SCREEN_WIDTH - width) {
-        sprite->x = SCREEN_WIDTH - width;
+    //TODO width of background image
+    //if(sprite->x > SCREEN_WIDTH - width) {
+    //    sprite->x = SCREEN_WIDTH - width;
+    //}
+    //if(sprite->x > bg_width - width) {
+    //    sprite->x = bg_height - width;
+    //}
+    if(sprite->y < 200) {
+        sprite->y = 200;
     }
-    if(sprite->y < 0) {
-        sprite->y = 0;
-    }
-    if(sprite->y > SCREEN_HEIGHT - height) {
-        sprite->y = SCREEN_HEIGHT - height; 
-    }
+    //if(sprite->y > SCREEN_HEIGHT - height) {
+    //    sprite->y = SCREEN_HEIGHT - height; 
+    //}
+    //if(sprite->y > bg_height - height) {
+    //    sprite->y = bg_height - height; 
+    //}
     //printf("plot (%i,%i)\n", sprite->x, sprite->y);
     
     if(draw_bounding_box) {
@@ -317,7 +332,7 @@ int player_input(Sprite* player, DArray *meta_info) {
         switch( event.type ){
             /* Look for a keypress */
             case SDL_KEYDOWN:
-                printf("keydown\n");
+                //printf("keydown\n");
                 /* Check the SDLKey values and move change the coords */
                 switch( event.key.keysym.sym ){
                     case SDLK_ESCAPE:
@@ -326,38 +341,40 @@ int player_input(Sprite* player, DArray *meta_info) {
                     case SDLK_LEFT:
                         if( (player->animation == SPINNING_BACK_KICK || 
                              player->animation == TORNADO_KICK) && player->advance_frame == 1) {
-                            printf("can't cancel...move animation playing\n");
+                            //printf("can't cancel...move animation playing\n");
                         } else {
                             player->animation = WALK;
-                            printf("left key press down\n");
+                            //printf("left key press down\n");
                             player->x_speed = -3;
                             player->advance_frame = 1;
                             player->key_state = SDLK_LEFT;
                             player->left_key = 1;
                             player->direction = SDL_FLIP_HORIZONTAL;
+                            player->moving_left = 1;
                         }
                         break;
                     case SDLK_RIGHT:
                         if( (player->animation == SPINNING_BACK_KICK || 
                              player->animation == TORNADO_KICK) && player->advance_frame == 1) {
-                            printf("can't cancel...move animation playing\n");
+                            //printf("can't cancel...move animation playing\n");
                         } else {
                             player->animation = WALK;
-                            printf("right key press down\n");
+                            //printf("right key press down\n");
                             player->x_speed =  3;
                             player->advance_frame = 1;
                             player->key_state = SDLK_RIGHT;
                             player->right_key = 1;
                             player->direction = SDL_FLIP_NONE;
+                            player->moving_right = 1;
                         }
                         break;
                     case SDLK_UP:
                         if( (player->animation == SPINNING_BACK_KICK || 
                              player->animation == TORNADO_KICK) && player->advance_frame == 1) {
-                            printf("can't cancel...move animation playing\n");
+                            //printf("can't cancel...move animation playing\n");
                         } else {
                             player->animation = WALK;
-                            printf("up key press down\n");
+                            //printf("up key press down\n");
                             player->y_speed = -3;
                             player->advance_frame = 1;
                             player->key_state = SDLK_UP;
@@ -367,10 +384,10 @@ int player_input(Sprite* player, DArray *meta_info) {
                     case SDLK_DOWN:
                         if( (player->animation == SPINNING_BACK_KICK || 
                              player->animation == TORNADO_KICK) && player->advance_frame == 1) {
-                            printf("can't cancel...move animation playing\n");
+                            //printf("can't cancel...move animation playing\n");
                         } else {
                             player->animation = WALK;
-                            printf("down key press down\n");
+                            //printf("down key press down\n");
                             player->y_speed =  3;
                             player->advance_frame = 1;
                             player->key_state = SDLK_DOWN;
@@ -394,15 +411,15 @@ int player_input(Sprite* player, DArray *meta_info) {
                 }
                 break;
             case SDL_KEYUP:
-                printf("keyup\n");
+                //printf("keyup\n");
                 switch( event.key.keysym.sym ){
                     case SDLK_LEFT:
-                        printf("left key press up\n");
+                        //printf("left key press up\n");
                         if( player->x_speed < 0 ) {
                             player->x_speed = 0;
                         }
-                        printf("last button pressed: %i\n", player->key_state);
-                        printf("sdlk left: %i\n", SDLK_LEFT);
+                        //printf("last button pressed: %i\n", player->key_state);
+                        //printf("sdlk left: %i\n", SDLK_LEFT);
                         //if(player->key_state == SDLK_LEFT) {
                         //    player->advance_frame = 0;
                         //}
@@ -412,9 +429,10 @@ int player_input(Sprite* player, DArray *meta_info) {
                         if(player->right_key == 0 && player->up_key == 0 && player->down_key == 0) {
                             player->advance_frame = 0;
                         }
+                        player->moving_left = 0;
                         break;
                     case SDLK_RIGHT:
-                        printf("right key press up\n");
+                        //printf("right key press up\n");
                         if( player->x_speed > 0 ) {
                             player->x_speed = 0;
                         }
@@ -427,9 +445,10 @@ int player_input(Sprite* player, DArray *meta_info) {
                         if(player->left_key == 0 && player->up_key == 0 && player->down_key == 0) {
                             player->advance_frame = 0;
                         }
+                        player->moving_right = 0;
                         break;
                     case SDLK_UP:
-                        printf("up key press up\n");
+                        //printf("up key press up\n");
                         if( player->y_speed < 0 ) {
                             player->y_speed = 0;
                         }
@@ -444,7 +463,7 @@ int player_input(Sprite* player, DArray *meta_info) {
                         }
                         break;
                     case SDLK_DOWN:
-                        printf("down key press up\n");
+                        //printf("down key press up\n");
                         if( player->y_speed > 0 ) {
                             player->y_speed = 0;
                         }
@@ -473,6 +492,7 @@ int player_input(Sprite* player, DArray *meta_info) {
                 break;
         }
     }
+
     if( (player->animation == SPINNING_BACK_KICK || 
          player->animation == TORNADO_KICK) && player->advance_frame == 1) {
         printf("can't move...move animation playing\n");
@@ -486,38 +506,46 @@ int player_input(Sprite* player, DArray *meta_info) {
             int width = 0;
             int height = 0;
             sprite_get_offset_wh_by_frame(player->animation, player->current_frame[player->animation], meta_info, &x_offset, &y_offset, &width, &height);
+            
             if(player->x < 0) {
                 player->x = 0;
             }
             if(player->x > SCREEN_WIDTH - width) {
                 player->x = SCREEN_WIDTH - width;
             }
-            if(player->y < 0) {
-                player->y = 0;
+            if(player->y < 200) {
+                player->y = 200;
             }
             if(player->y > SCREEN_HEIGHT - height) {
                 player->y = SCREEN_HEIGHT - height; 
             }
         }
     }
+    
+    
     return quit;
 }
 
-void world_to_pixel(int x, int y, int *dest_x, int *dest_y) {
+void world_to_pixel(float bg_width, float bg_height, float world_width, float world_height, int x, int y, int *dest_x, int *dest_y) {
     //transform world space to pixel space
-    float wp_scale_x = SCREEN_WIDTH / WORLD_WIDTH;
-    float wp_scale_y = SCREEN_HEIGHT / WORLD_HEIGHT;
+    //TODO: change from screen to background image height and width
+    //float wp_scale_x = SCREEN_WIDTH / WORLD_WIDTH;
+    //float wp_scale_y = SCREEN_HEIGHT / WORLD_HEIGHT;
+    
+    float wp_scale_x = bg_width / world_width;
+    float wp_scale_y = bg_height / world_height;
+    
 
     *dest_x = x * wp_scale_x;
     *dest_y = y * wp_scale_y;
-    
-
 }
 
-void pixel_to_world(int x, int y, int *dest_x, int *dest_y) {
+//void pixel_to_world(int x, int y, int *dest_x, int *dest_y) {
+void pixel_to_world(float bg_width, float bg_height, float world_width, float world_height, int x, int y, int *dest_x, int *dest_y) {
     //transform pixel space to world space
-    float pw_scale_x = WORLD_WIDTH / SCREEN_WIDTH;
-    float pw_scale_y = WORLD_HEIGHT / SCREEN_HEIGHT;
+    //TODO: change from screen to background image height and width
+    float pw_scale_x = world_width / bg_width;
+    float pw_scale_y = world_height / bg_height;
     *dest_x = x * pw_scale_x;
     *dest_y = y * pw_scale_y;
 }
@@ -538,12 +566,12 @@ void moveto_coordinates(Sprite *sprite, int dest_x, int dest_y) {
     }
     
     if(is_within_int(sprite->y, dest_y, sprite->y_speed) == 0) {
-        printf("not within y sprite->y:%i < dest_y:%i y_speed:%i\n", sprite->y, dest_y, sprite->y_speed);
+        //printf("not within y sprite->y:%i < dest_y:%i y_speed:%i\n", sprite->y, dest_y, sprite->y_speed);
         if(sprite->y < dest_y) {
-            printf("increase\n");
+            //printf("increase\n");
             sprite->y+=sprite->y_speed;
         } else if(sprite->y > dest_y){
-            printf("decrease\n");
+            //printf("decrease\n");
             sprite->y-=sprite->y_speed;
         }
     }
@@ -568,7 +596,80 @@ int within_coordinates(Sprite *sprite, int dest_x, int dest_y) {
     return 0;
 }
 
-void wander_stall_attack(Sprite *player, Sprite *enemy, DArray *meta_info) {
+void wander(Sprite *enemy) {
+
+    int wander_test = SDL_GetTicks() - enemy->wander_start;
+    printf("wander test:%i < duration: %i\n", wander_test, enemy->wander_duration);
+    if(wander_test < enemy->wander_duration) {
+        printf("wandering\n");
+        enemy->state = WANDER;
+        behaviors_generate_location(enemy->location, &enemy->wander_direction);
+    } else {
+        printf("not wandering\n");
+    }
+}
+
+void wander_attack(Sprite *player, Sprite *enemy, DArray *meta_info, int num_attacks) {
+    int near = behaviors_is_target_near(player->location, enemy->location, 25);
+    if(enemy->state != SEEK && near == 0) {
+        behaviors_generate_location(enemy->location, &enemy->wander_direction);
+        printf("attack: WANDER\n");
+        enemy->state = WANDER;
+    }
+    if(enemy->state != SEEK && near == 1) {
+        Node *result = node_create(0,0);
+        printf("attack: enemy->location->x:%i enemy->location->y:%i\n", enemy->location->coords->x, enemy->location->coords->y);
+        printf("attack: player->location->x:%i player->location->y:%i\n", player->location->coords->x, player->location->coords->y);
+        behaviors_seek(enemy->location, player->location, result, &enemy->seek_count, &enemy->seek_length);
+        enemy->location->coords->x = result->coords->x;
+        enemy->location->coords->y = result->coords->y;
+        printf("attack: after enemy->location->x:%i enemy->location->y:%i\n", enemy->location->coords->x, enemy->location->coords->y);
+        node_destroy(result);
+        enemy->state = SEEK;
+    }
+
+
+    if(enemy->state == SEEK && enemy->seek_count < enemy->seek_length-4) {
+        Node *result = node_create(0,0);
+        printf("enemy->location->x:%i enemy->location->y:%i\n", enemy->location->coords->x, enemy->location->coords->y);
+        behaviors_seek(enemy->location, player->location, result, &enemy->seek_count, &enemy->seek_length);
+        enemy->location->coords->x = result->coords->x;
+        enemy->location->coords->y = result->coords->y;
+        printf("after enemy->location->x:%i enemy->location->y:%i\n", enemy->location->coords->x, enemy->location->coords->y);
+        printf("count: %i out of length %i\n", enemy->seek_count, enemy->seek_length);
+        node_destroy(result);
+    }
+    
+    if(enemy->state == SEEK && enemy->seek_count == enemy->seek_length-4) {
+        printf("attack: enemy->x: %i enemy->y: %i\n", enemy->x, enemy->y);
+        //attack player
+        //change animation to attack move
+        printf("CHECK %i\n", enemy->animation_count[TORNADO_KICK]);
+        enemy->animation = TORNADO_KICK;
+        enemy->advance_frame = 1;
+    }
+
+    if(enemy->animation_count[TORNADO_KICK] == num_attacks) {
+        printf("KICKS\n");
+        printf("attack: after 3 attacks\n");
+        enemy->advance_frame = 0;
+        enemy->animation_count[TORNADO_KICK] = 0;
+        enemy->state = ATTACK;
+
+    }
+    
+    //to complete an ai function it would have to post that it was done
+    //could send in a variable to modify its result would update state
+
+
+
+}
+
+//TODO: node_create(0,0) is a problem because it doesnt pay attention to boundries
+//0,0 is absolute 0,0 position on the map not shaded out area
+//need to create a tool that shades out boundries...by creating a map meta file that lists rectangles that are not walkable
+//rectangles are shaded objects that have height, width, and depth that are jumpable and also boundries unless you jump on top
+void wander_stall_attack(Sprite *player, Sprite *enemy, DArray *meta_info, int num_attacks) {
     /**
     int x_offset = 0;
     int y_offset = 0;
@@ -632,7 +733,7 @@ void wander_stall_attack(Sprite *player, Sprite *enemy, DArray *meta_info) {
         enemy->animation = TORNADO_KICK;
         enemy->advance_frame = 1;
     }
-    if(enemy->animation_count[TORNADO_KICK] == 2) {
+    if(enemy->animation_count[TORNADO_KICK] == num_attacks) {
         enemy->advance_frame = 0;
         enemy->animation_count[TORNADO_KICK] = 0;
         printf("after 3 attacks\n");
@@ -643,20 +744,7 @@ void wander_stall_attack(Sprite *player, Sprite *enemy, DArray *meta_info) {
         Node *result = node_create(0,0);
         enemy->flee_loc_x = player->location->coords->x - 25;
         enemy->flee_loc_y = player->location->coords->y - 25;
-        /**
-        if(enemy->flee_loc_x < 0) {
-            enemy->flee_loc_x = 0;
-        }
-        if(enemy->flee_loc_y < 0) {
-            enemy->flee_loc_y = 0;
-        }
-        if(enemy->flee_loc_x > SCREEN_WIDTH - width) {
-            enemy->flee_loc_x = SCREEN_WIDTH - width;
-        }
-        if(enemy->flee_loc_y > SCREEN_HEIGHT - height) {
-            enemy->flee_loc_y = SCREEN_HEIGHT - height;
-        }
-        **/
+        
         Node *target_node = node_create(enemy->flee_loc_x,enemy->flee_loc_y);
         behaviors_seek(enemy->location, target_node, result, &enemy->seek_count, &enemy->seek_length);
         enemy->location->coords->x = result->coords->x;
@@ -730,27 +818,41 @@ int sprite_is_attack(int animation) {
 void sprite_handle_collision(Sprite *sprite1, Sprite *sprite2, DArray *meta_info) {
     if(sprite_is_attack(sprite2->animation)) {
         sprite1->animation = HIT;
+        if(sprite1->last_animation != sprite1->animation) {
+            sprite1->last_animation = sprite1->animation;
+            if(sprite1->health - 15 < 0) {
+                sprite1->health = 0;
+            } else {
+                sprite1->health -= 15;
+            }
+        }
         sprite1->advance_frame = 0;
         int frames = sprite_get_frames(sprite1->animation, meta_info);
         //printf("animation count: %i\n", sprite2->animation_count[TORNADO_KICK]);
         //printf("last animation count: %i\n", sprite2->last_animation_count[TORNADO_KICK]);
-        log_msg(LOG_DEBUG, "animation count: %i\n", sprite2->animation_count[TORNADO_KICK]);
-        log_msg(LOG_DEBUG, "last animation count: %i\n", sprite2->last_animation_count[TORNADO_KICK]);
+        //log_msg(LOG_DEBUG, "animation count: %i\n", sprite2->animation_count[TORNADO_KICK]);
+        //log_msg(LOG_DEBUG, "last animation count: %i\n", sprite2->last_animation_count[TORNADO_KICK]);
+        //log_msg(LOG_DEBUG, "sprite 2 current frame: %i\n", sprite2->current_frame[TORNADO_KICK]);
         if(sprite2->last_animation_count[TORNADO_KICK] != sprite2->animation_count[TORNADO_KICK]) {
-            log_msg(LOG_DEBUG, "there was a change: last %i != now %i\n", 
-                    sprite2->last_animation_count[TORNADO_KICK],
-                    sprite2->animation_count[TORNADO_KICK]);
+            //log_msg(LOG_DEBUG, "there was a change: last %i != now %i\n", 
+            //        sprite2->last_animation_count[TORNADO_KICK],
+            //        sprite2->animation_count[TORNADO_KICK]);
             //printf("there was a change: last %i != now %i\n", 
             //printf("player current frame: %i\n", sprite1->current_frame);
             sprite1->current_frame[sprite1->animation]++;
             sprite1->current_frame[sprite1->animation] = sprite1->current_frame[sprite1->animation] % frames;
+            if(sprite1->health - 15 < 0) {
+                sprite1->health = 0;
+            } else {
+                sprite1->health -= 15;
+            }
         }
-        log_msg(LOG_DEBUG, "HIT player current frame: %i\n", sprite1->current_frame[sprite1->animation]);
+        //log_msg(LOG_DEBUG, "HIT player current frame: %i\n", sprite1->current_frame[sprite1->animation]);
         sprite2->last_animation_count[TORNADO_KICK] = sprite2->animation_count[TORNADO_KICK];
     } 
 }
 
-void boundry_check(Sprite *sprite, DArray *meta_info, int *x, int *y) {
+void boundry_check(float bg_width, float bg_height, Sprite *sprite, DArray *meta_info, int *x, int *y) {
     int x_offset = 0;
     int y_offset = 0; 
     int width = 0;
@@ -760,35 +862,114 @@ void boundry_check(Sprite *sprite, DArray *meta_info, int *x, int *y) {
     if(*x < 0) {
         *x = 0;
     }
-    if(*x > SCREEN_WIDTH - width) {
-        *x = SCREEN_WIDTH - width;
+    if(*x > bg_width - width) {
+        *x = bg_width - width;
     }
-    if(*y < 0) {
-        *y = 0;
+    //if(*x > SCREEN_WIDTH - width) {
+    //    *x = SCREEN_WIDTH - width;
+    //}
+    if(*y < 200) {
+        *y = 200;
     }
-    if(*y > SCREEN_HEIGHT - height) {
-        *y = SCREEN_HEIGHT - height; 
+    if(*y > bg_height - height) {
+        *y = bg_height - height; 
     }
+    //if(*y > SCREEN_HEIGHT - height) {
+    //    *y = SCREEN_HEIGHT - height; 
+    //}
 }
 
-void sprite_draw_background(SDL_Renderer *renderer, SDL_Texture *backgrounds, int len, int *current_background, int player_x, int player_moving) { 
+void sprite_draw_health_bar(SDL_Renderer *renderer, Sprite *sprite, DArray *meta_info, int health_percentage) {
     
-    /**
-    int i = 0;
-    for(i=0; i <len; i++) {
-        
-        printf("[%p]\n", backgrounds[i]);
+    int x_offset = 0;
+    int y_offset = 0; 
+    int width = 0;
+    int height = 0;
+    sprite_get_offset_wh_by_frame(sprite->animation, sprite->current_frame[sprite->animation], meta_info, &x_offset, &y_offset, &width, &height);
 
+    //5 pixel height offset
+    int offset = 15;
+    int y_pos = sprite->y - offset;
+    int x_pos = sprite->x;
 
+    SDL_Rect pos;
+	pos.x = x_pos;
+	pos.y = y_pos;
+    pos.w = 50;
+    pos.h = 10;
+    
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 0);
+    
+    int result = SDL_RenderDrawRect(renderer, &pos);
+    if(result != 0) {
+        printf("render rect failed: %s\n", SDL_GetError());
+        exit(1);
     }
 
-    if(*background != NULL) {
-        
-        int increment = 0;
+    //SDL_Surface *s;
+    //s = SDL_CreateRGBSurface(0, pos.w, pos.h, 32, 0, 0, 0, 0);
+    //SDL_FillRect(s, &pos, SDL_MapRGB(s->format, 255, 0, 0));
+    
+    
+    SDL_Rect fill_rect;
+    fill_rect.x = pos.x;
+    fill_rect.y = pos.y;
+    
+    float ratio = (float)pos.w / (float)sprite->max_health;
+    int w = ratio * sprite->health;
+    
+    //printf("ratio: %f health: %i width: %i\n", ratio, sprite->health, w);
+
+    fill_rect.w = w;
+    fill_rect.h = pos.h;
+    
+    SDL_RenderFillRect(renderer, &fill_rect);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+}
+
+
+void sprite_draw_background(SDL_Renderer *renderer, SDL_Texture **backgrounds, int len, int *current_background, int player_x, int player_moving_right, int player_moving_left, int *player_scroll) { 
+    
+    SDL_Texture *background = NULL;
+    int i = 0;
+    for(i=0; i <len; i++) {
+        if(i == *current_background) {
+            //printf("[%p]\n", *(backgrounds+i));
+            background = *(backgrounds + i);
+            break;
+        }
+    }
+
+    if(background != NULL) {
         int bg_slice = 0;
-        if(player_x > 760 && player_moving) {
-            increment++;
-            bg_slice = increment * -1;
+        if(player_x > SCROLL_WIDTH_RIGHT && player_moving_right) {
+            *player_scroll = *player_scroll + 2;
+        } else if (player_x < SCROLL_WIDTH_LEFT && player_moving_left) {
+            *player_scroll = *player_scroll - 2;
+        }
+        
+        SDL_Rect dst;
+        //Query the texture to get its width and height to use
+        SDL_QueryTexture(background, NULL, NULL, &dst.w, &dst.h);
+        
+        if(*player_scroll <= 0) {
+            *player_scroll = 0;
+        }
+        
+
+        if(*player_scroll >= dst.w - SCREEN_WIDTH) {
+            *player_scroll = dst.w - SCREEN_WIDTH;
+        }
+
+        bg_slice = *player_scroll * -1;
+        //printf("background\n");
+        dst.x = bg_slice;
+        dst.y = 0;
+        //printf("bg_slice:%i destination width:%i height:%i \n", bg_slice, dst.w, dst.h);
+        SDL_RenderCopy(renderer, background, NULL, &dst);
+    }    
+    /**        
             
         }
 
@@ -883,22 +1064,33 @@ int main(int argc, char** argv){
 		return 3;
 	}
     
-    SDL_Texture *background = NULL;
+    SDL_Texture *background1 = NULL;
+    SDL_Texture *background2 = NULL;
     SDL_Texture *image = NULL;
 
-    background = sprite_load_image(renderer, "res/background_rcr.png");
-    //background1 = sprite_load_image(renderer, "res/background_rcr.png");
-    //background2 = sprite_load_image(renderer, "res/background_new.png");
+    //background = sprite_load_image(renderer, "res/background_rcr.png");
+    background1 = sprite_load_image(renderer, "res/background_rcr.png");
+    background2 = sprite_load_image(renderer, "res/background_new.png");
 
-    //SDL_Texture *backgrounds[2];
-    //backgrounds[0] = background1;
-    //backgrounds[1] = background2;
+    SDL_Texture* backgrounds[2];
+    backgrounds[0] = background1;
+    backgrounds[1] = background2;
     
+    SDL_Rect bg;
+    //Query the texture to get its width and height to use
+    SDL_QueryTexture(background1, NULL, NULL, &bg.w, &bg.h);
+    float bg_width = bg.w;
+    float bg_height = bg.h;
+    float world_width = bg_width / 10;
+    float world_height = bg_height / 10;
+
+    printf("bg_width: %f bg_height: %f world_width: %f world_height: %f\n", bg_width, bg_height, world_width, world_height);
+
     //printf("bg 1: [%p]\n", backgrounds[0]);
     //printf("bg 2: [%p]\n", backgrounds[1]);
 	
     image = sprite_load_image(renderer, "res/output.png");
-    printf("after sprite load image\n");
+    //printf("after sprite load image\n");
         
     //load the meta info
     char* filename = "res/animation_meta_info.txt";
@@ -912,18 +1104,19 @@ int main(int argc, char** argv){
     int quit = 0;
     
     float delay = 1000.0f / FPS;
-    Sprite* player = sprite_create(PLAYER, WALK, 200, 100, delay, image);
+    Sprite* player = sprite_create(PLAYER, WALK, 200, 300, delay, image);
     player->x_speed = 0;
     player->y_speed = 0;
     
-    Sprite* enemy = sprite_create(ENEMY, WALK, 0, 0, delay, image);
+    Sprite* enemy = sprite_create(ENEMY, WALK, 0, 300, delay, image);
     enemy->x_speed = 2;
     enemy->y_speed = 2;
     enemy->advance_frame = 1;
     //set white background
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     
-    pixel_to_world(enemy->x, enemy->y, &enemy->location->coords->x, &enemy->location->coords->y);
+    pixel_to_world(bg_width, bg_height, world_width, world_height,
+                   enemy->x, enemy->y, &enemy->location->coords->x, &enemy->location->coords->y);
     
     int dest_x = 0;
     int dest_y = 0;
@@ -932,13 +1125,10 @@ int main(int argc, char** argv){
     //animations for punch and basic kick
     //animation for getting hit
     //animations for walk left and run left
-    //collision detection...two squares intersect...triggers getting hit animation
     //2 more ai behaviors
     //health bars above units and health stats
     //dying animation
     //dying logic
-    //draw background
-    //add side scrolling left and right to see entire background....camera panning
     //generate enemies off screen and have them walk on to screen
     //redo tornado kick and spinning back kick so stick figure is same size
     //figure out how to color stick figure without having to make new sprites on sheet...need to make figures white to set modulation
@@ -953,18 +1143,20 @@ int main(int argc, char** argv){
         quit = player_input(player, &meta_info);
         //printf("quit: %i\n", quit);  
        
-        log_msg(LOG_DEBUG, "after player input: current frame: %i\n", player->current_frame[HIT]);
+        //log_msg(LOG_DEBUG, "after player input: current frame: %i\n", player->current_frame[HIT]);
         
         //pixel location to world location
-        pixel_to_world(player->x, player->y, &player->location->coords->x, &player->location->coords->y);
+        pixel_to_world(bg_width, bg_height, world_width, world_height, 
+                       player->x, player->y, &player->location->coords->x, &player->location->coords->y);
 
         //world location to pixel location
-        world_to_pixel(enemy->location->coords->x, enemy->location->coords->y, &dest_x, &dest_y);
+        world_to_pixel(bg_width, bg_height, world_width, world_height,
+                       enemy->location->coords->x, enemy->location->coords->y, &dest_x, &dest_y);
         
         //boundry check
-        boundry_check(enemy, &meta_info, &dest_x, &dest_y);
+        //boundry_check(SCREEN_WIDTH, SCREEN_HEIGHT, enemy, &meta_info, &dest_x, &dest_y);
 
-        printf("2nd before moveto = enemy x:%i enemy y:%i dest_x:%i dest_y:%i\n", enemy->x, enemy->y, dest_x, dest_y);
+        //printf("2nd before moveto = enemy x:%i enemy y:%i dest_x:%i dest_y:%i\n", enemy->x, enemy->y, dest_x, dest_y);
         
         //update enemy sprite by sprite's speed
         moveto_coordinates(enemy, dest_x, dest_y);
@@ -972,25 +1164,25 @@ int main(int argc, char** argv){
         //are we at the original world location in pixel coordinates?
         int arrived = within_coordinates(enemy, dest_x, dest_y);
         
-        printf("arrived: %i\n", arrived);
+        //printf("arrived: %i\n", arrived);
         if(arrived == 1) {
+            //wander(enemy); 
             // we reached last behavior's destination so do new AI behavior
-            wander_stall_attack(player, enemy, &meta_info);
+            //wander_attack(player, enemy, &meta_info, 4);
+            wander_stall_attack(player, enemy, &meta_info, 3);
         }
-        
+
         sprite_update_bounding_box(player, &meta_info);
         sprite_update_bounding_box(enemy, &meta_info);
 
         //check collision
         int collision = sprite_check_collision(player, enemy);
         
-        printf("collision: %i\n", collision);
+        //printf("collision: %i\n", collision);
         
         if(collision) {
             sprite_handle_collision(player, enemy, &meta_info);
         }
-        
-        
         
         //handle collision
         //if animation is an attack then check frame range that triggers a hit
@@ -1007,12 +1199,19 @@ int main(int argc, char** argv){
         
         //Rendering
 		SDL_RenderClear(renderer);
+       
+        //printf("player->x: %i\n", player->x);
+        //printf("moving right: %i\n", player->moving_right);
+        //printf("moving left: %i\n", player->moving_left);
+        int current_background = 0;
+        sprite_draw_background(renderer, backgrounds, 2, &current_background, player->x, player->moving_right, player->moving_left, &player->scroll);
         
-        //sprite_draw_background(renderer, backgrounds, 2, 0, 775, 1);
+        sprite_draw_health_bar(renderer, player, &meta_info, 100); 
+        sprite_draw_health_bar(renderer, enemy, &meta_info, 100); 
         
         //draw sprite
-        sprite_render_frame(player, &meta_info, renderer, 1);
-        sprite_render_frame(enemy, &meta_info, renderer, 1);
+        sprite_render_frame(SCREEN_WIDTH, SCREEN_HEIGHT, player, &meta_info, renderer, 0);
+        sprite_render_frame(bg_width, bg_height, enemy, &meta_info, renderer, 0);
 
 		//Update the screen
 		SDL_RenderPresent(renderer);
@@ -1031,7 +1230,8 @@ int main(int argc, char** argv){
     sprite_destroy(player);
     sprite_destroy(enemy);
     darray_destroy(&meta_info);
-	SDL_DestroyTexture(background);
+	SDL_DestroyTexture(backgrounds[0]);
+	SDL_DestroyTexture(backgrounds[1]);
 	SDL_DestroyTexture(image);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);

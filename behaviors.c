@@ -177,6 +177,7 @@ void behaviors_seek(Node *start, Node *end, Node *result, int *count, int *lengt
        b_m_target->coords->y != end->coords->y) {
         pf_list_destroy(&b_m_seek_lst);
         pf_list_init(&b_m_seek_lst);
+        //printf("find shortest path\n");
         find_shortest_path(start, end, &b_m_invalid_lst, &b_m_seek_lst);
         b_m_count = 1;
         *length = pf_list_size(&b_m_seek_lst); 
@@ -184,15 +185,23 @@ void behaviors_seek(Node *start, Node *end, Node *result, int *count, int *lengt
         b_m_target->coords->y = end->coords->y;
     }
     //fetch node at index
-    printf("before pop\n");
-    pf_list_print(&b_m_seek_lst);
+    //printf("before pop index:%i\n", b_m_index);
+    //pf_list_print(&b_m_seek_lst);
     Node *r = pf_list_pop(&b_m_seek_lst, b_m_index);
-    printf("after pop [%p]\n", r);
-    pf_list_print(&b_m_seek_lst);
-    result->coords->x = r->coords->x;
-    result->coords->y = r->coords->y;
-    *count = b_m_count;
-    printf("RESULT: (%i,%i)\n", result->coords->x, result->coords->y);
+    //printf("after pop [%p]\n", r);
+    //pf_list_print(&b_m_seek_lst);
+    //printf(" after pf list print\n");
+    //printf("result: [%p]\n", result);
+    //printf("r: [%p]\n", r);
+    if(r != NULL) {
+        result->coords->x = r->coords->x;
+      //  printf(" after result coords x\n");
+        result->coords->y = r->coords->y;
+       // printf(" after result coords y\n");
+        *count = b_m_count;
+        //printf(" after count\n");
+        //printf("RESULT: (%i,%i)\n", result->coords->x, result->coords->y);
+    }
 }
 
 void behaviors_destroy() { 

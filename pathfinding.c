@@ -271,7 +271,7 @@ void find_shortest_path(Node *node_start, Node *node_end, PF_List *invalid_list,
     
     get_path(node_start, &closed_list, result);
     
-    pf_list_print(result);
+    //pf_list_print(result);
 
     //printf("open list destroy\n");
     pf_list_destroy(&open_list);
