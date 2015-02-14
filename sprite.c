@@ -239,9 +239,9 @@ void sprite_render_frame(float bg_width, float bg_height, Sprite *sprite, DArray
     //if(sprite->y > SCREEN_HEIGHT - height) {
     //    sprite->y = SCREEN_HEIGHT - height; 
     //}
-    //if(sprite->y > bg_height - height) {
-    //    sprite->y = bg_height - height; 
-    //}
+    if(sprite->y > bg_height - height) {
+        sprite->y = bg_height - height; 
+    }
     //printf("plot (%i,%i)\n", sprite->x, sprite->y);
     
     if(draw_bounding_box) {
@@ -596,79 +596,7 @@ int within_coordinates(Sprite *sprite, int dest_x, int dest_y) {
     return 0;
 }
 
-void wander(Sprite *enemy) {
 
-    int wander_test = SDL_GetTicks() - enemy->wander_start;
-    printf("wander test:%i < duration: %i\n", wander_test, enemy->wander_duration);
-    if(wander_test < enemy->wander_duration) {
-        printf("wandering\n");
-        enemy->state = WANDER;
-        behaviors_generate_location(enemy->location, &enemy->wander_direction);
-    } else {
-        printf("not wandering\n");
-    }
-}
-
-void wander_attack(Sprite *player, Sprite *enemy, DArray *meta_info, int num_attacks) {
-    int near = behaviors_is_target_near(player->location, enemy->location, 25);
-    if(enemy->state != SEEK && near == 0) {
-        behaviors_generate_location(enemy->location, &enemy->wander_direction);
-        printf("attack: WANDER\n");
-        enemy->state = WANDER;
-    }
-    if(enemy->state != SEEK && near == 1) {
-        Node *result = node_create(0,0);
-        printf("attack: enemy->location->x:%i enemy->location->y:%i\n", enemy->location->coords->x, enemy->location->coords->y);
-        printf("attack: player->location->x:%i player->location->y:%i\n", player->location->coords->x, player->location->coords->y);
-        behaviors_seek(enemy->location, player->location, result, &enemy->seek_count, &enemy->seek_length);
-        enemy->location->coords->x = result->coords->x;
-        enemy->location->coords->y = result->coords->y;
-        printf("attack: after enemy->location->x:%i enemy->location->y:%i\n", enemy->location->coords->x, enemy->location->coords->y);
-        node_destroy(result);
-        enemy->state = SEEK;
-    }
-
-
-    if(enemy->state == SEEK && enemy->seek_count < enemy->seek_length-4) {
-        Node *result = node_create(0,0);
-        printf("enemy->location->x:%i enemy->location->y:%i\n", enemy->location->coords->x, enemy->location->coords->y);
-        behaviors_seek(enemy->location, player->location, result, &enemy->seek_count, &enemy->seek_length);
-        enemy->location->coords->x = result->coords->x;
-        enemy->location->coords->y = result->coords->y;
-        printf("after enemy->location->x:%i enemy->location->y:%i\n", enemy->location->coords->x, enemy->location->coords->y);
-        printf("count: %i out of length %i\n", enemy->seek_count, enemy->seek_length);
-        node_destroy(result);
-    }
-    
-    if(enemy->state == SEEK && enemy->seek_count == enemy->seek_length-4) {
-        printf("attack: enemy->x: %i enemy->y: %i\n", enemy->x, enemy->y);
-        //attack player
-        //change animation to attack move
-        printf("CHECK %i\n", enemy->animation_count[TORNADO_KICK]);
-        enemy->animation = TORNADO_KICK;
-        enemy->advance_frame = 1;
-    }
-
-    if(enemy->animation_count[TORNADO_KICK] == num_attacks) {
-        printf("KICKS\n");
-        printf("attack: after 3 attacks\n");
-        enemy->advance_frame = 0;
-        enemy->animation_count[TORNADO_KICK] = 0;
-        enemy->state = ATTACK;
-
-    }
-    
-    //to complete an ai function it would have to post that it was done
-    //could send in a variable to modify its result would update state
-
-
-
-}
-
-//TODO: node_create(0,0) is a problem because it doesnt pay attention to boundries
-//0,0 is absolute 0,0 position on the map not shaded out area
-//need to create a tool that shades out boundries...by creating a map meta file that lists rectangles that are not walkable
-//rectangles are shaded objects that have height, width, and depth that are jumpable and also boundries unless you jump on top
 void wander_stall_attack(Sprite *player, Sprite *enemy, DArray *meta_info, int num_attacks) {
     /**
     int x_offset = 0;
@@ -683,12 +611,11 @@ void wander_stall_attack(Sprite *player, Sprite *enemy, DArray *meta_info, int n
     printf("is target near: %i\n", near);
     printf("count: %i out of length %i\n", enemy->seek_count, enemy->seek_length);
     printf("tornado animation count: %i\n", enemy->animation_count[TORNADO_KICK]);
-    
     int wander_test = SDL_GetTicks() - enemy->wander_start;
 
     //have sprite wander on screen
     //generates new coordinates in world space
-    printf("WANDER test: %i\n", wander_test);
+    printf("WANDER test: %i duration:%i\n", wander_test, enemy->wander_duration);
     if(wander_test < enemy->wander_duration) {
         if(near == 0 && enemy->state == WANDER) {
             printf("near == 0\n");
@@ -742,8 +669,8 @@ void wander_stall_attack(Sprite *player, Sprite *enemy, DArray *meta_info, int n
     if(enemy->state == ATTACK) {
         printf("flee\n");
         Node *result = node_create(0,0);
-        enemy->flee_loc_x = player->location->coords->x - 25;
-        enemy->flee_loc_y = player->location->coords->y - 25;
+        enemy->flee_loc_x = 0;
+        enemy->flee_loc_y = 25;
         
         Node *target_node = node_create(enemy->flee_loc_x,enemy->flee_loc_y);
         behaviors_seek(enemy->location, target_node, result, &enemy->seek_count, &enemy->seek_length);
@@ -781,7 +708,6 @@ void wander_stall_attack(Sprite *player, Sprite *enemy, DArray *meta_info, int n
         printf("count: %i out of length %i\n", enemy->seek_count, enemy->seek_length);
         node_destroy(result);
     }
-
 }
 
 int sprite_check_collision(Sprite *sprite1, Sprite *sprite2) {
@@ -1137,8 +1063,11 @@ int main(int argc, char** argv){
     //add buy moves screen in between levels
     //add a generator which generates guys for 100 levels
 
+    int i = 0;
     while (!quit){
-		start = SDL_GetTicks();
+        printf("iteration: %i\n", i);
+		
+        start = SDL_GetTicks();
         
         quit = player_input(player, &meta_info);
         //printf("quit: %i\n", quit);  
@@ -1154,7 +1083,7 @@ int main(int argc, char** argv){
                        enemy->location->coords->x, enemy->location->coords->y, &dest_x, &dest_y);
         
         //boundry check
-        //boundry_check(SCREEN_WIDTH, SCREEN_HEIGHT, enemy, &meta_info, &dest_x, &dest_y);
+        boundry_check(SCREEN_WIDTH, SCREEN_HEIGHT, enemy, &meta_info, &dest_x, &dest_y);
 
         //printf("2nd before moveto = enemy x:%i enemy y:%i dest_x:%i dest_y:%i\n", enemy->x, enemy->y, dest_x, dest_y);
         
@@ -1164,11 +1093,10 @@ int main(int argc, char** argv){
         //are we at the original world location in pixel coordinates?
         int arrived = within_coordinates(enemy, dest_x, dest_y);
         
-        //printf("arrived: %i\n", arrived);
+        printf("arrived: %i\n", arrived);
         if(arrived == 1) {
             //wander(enemy); 
             // we reached last behavior's destination so do new AI behavior
-            //wander_attack(player, enemy, &meta_info, 4);
             wander_stall_attack(player, enemy, &meta_info, 3);
         }
 
@@ -1222,6 +1150,7 @@ int main(int argc, char** argv){
             //float fps = 1.0f / (interval / 1000.0f);
             //printf("%f fps\n", fps);
         }
+        i++;
 	}
     
     //SDL_Delay(4000);
